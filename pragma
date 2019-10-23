@@ -1,0 +1,1 @@
+{-# OPTIONS_GHC -fplugin=Peekaboo.Monadic -fplugin-opt=Peekaboo.Monadic:$ #-}

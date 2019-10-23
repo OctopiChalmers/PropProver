@@ -1,0 +1,12 @@
+#!/bin/bash
+
+FILE=test/Main.hs
+PRAGMA=pragma
+echo "Running interactive proof mode over $FILE"
+
+inotifywait -q -m -e close_write $FILE |
+while read -r filename event; do
+  
+  clear
+  cat $PRAGMA $FILE | stack runhaskell | grep -Ev '^(\[Peekaboo\])'
+done
