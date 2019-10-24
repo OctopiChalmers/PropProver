@@ -23,49 +23,86 @@ import Prop
 -- | Proof errors
 
 data ProofError =
-    IncompleteProof ProofState
-  | InvalidTactic   ProofState String
-  | NoMoreSubgoals  ProofState String
+    IncompleteProof       ProofState
+  | InexistentHypothesis  ProofState String Hyp
+  | InvalidTactic         ProofState String
+  | NoMoreSubgoals        ProofState String
   deriving Show
 
 -- Error throwers
 incompleteProof :: Proof a
-incompleteProof = get >>= \ps -> throwError (IncompleteProof ps)
+incompleteProof = get >>= \ps ->
+  throwError (IncompleteProof ps)
+
+inexistentHypothesis :: String -> Hyp -> Proof a
+inexistentHypothesis name h = get >>= \ps ->
+  throwError (InexistentHypothesis ps name h)
 
 invalidTactic :: String -> Proof a
-invalidTactic name = get >>= \ps -> throwError (InvalidTactic ps name)
+invalidTactic name = get >>= \ps ->
+  throwError (InvalidTactic ps name)
 
 noMoreSubgoals :: String -> Proof a
-noMoreSubgoals name = get >>= \ps -> throwError (NoMoreSubgoals ps name)
+noMoreSubgoals name = get >>= \ps ->
+  throwError (NoMoreSubgoals ps name)
 
 
 -- Pretty printing errors
-printInvalidTactic :: ProofState -> String -> IO ()
-printInvalidTactic ps name = do
+printErrorHeaderWithLocation :: ProofState -> IO ()
+printErrorHeaderWithLocation ps =
   case ps_ann_last ps of
     Just (MkSrcInfo _ (Just (f,r,c))) ->
-      putStrLn $ "Error at: " ++ f ++ ":" ++ show (r, c)
+      putStrLn $ "Error at " ++ f ++ ":" ++ show (r, c)
     _ -> return ()
-  putStrLn $ "Cannot apply tactic <" ++ name ++ "> to the current subgoal:"
-  putStrLn $ pprProp ps (head (ps_subgoals ps))
 
-printIncompleteProof :: ProofState -> IO ()
-printIncompleteProof ps = do
-  putStrLn $ show (length (ps_subgoals ps)) ++ " subgoals:"
-  forM_ (Set.elems (ps_variables ps)) $ \i -> do
+printCurrentLocation :: ProofState -> IO ()
+printCurrentLocation ps =
+  case ps_ann_last ps of
+    Just (MkSrcInfo _ (Just (f,r,c))) -> do
+      putStrLn $ "Current position: " ++ f ++ ":" ++ show (r, c)
+    _ -> return ()
+
+printProofState :: ProofState -> IO ()
+printProofState ps = do
+  let subgoals = length (ps_subgoals ps)
+  let subgoalsword = if subgoals == 1 then "subgoal" else "subgoals"
+  putStrLn $ show subgoals ++ " " ++ subgoalsword ++ "\n"
+  forM_ (Set.elems (ps_vars ps)) $ \i -> do
     putStrLn $ pprVar ps i ++ " : Prop"
-  forM_ (Map.assocs (ps_hyps ps)) $ \(h, prop) -> do
+  forM_ (Map.assocs (ps_axioms ps)) $ \(axm, prop) -> do
+    putStrLn $ pprHyp ps axm ++ " : " ++ pprProp ps prop
+  forM_ (Map.assocs (snd (head (ps_subgoals ps)))) $ \(h, prop) -> do
     putStrLn $ pprHyp ps h ++ " : " ++ pprProp ps prop
-  putStrLn "----------------------------------------"
-  putStrLn $ pprProp ps (head (ps_subgoals ps))
+  putStrLn $ "========================================"
+  putStrLn $ pprProp ps (fst (head (ps_subgoals ps)))
+
+printInexistentHypothesis :: ProofState -> String -> Hyp -> IO ()
+printInexistentHypothesis ps name h = do
+  printErrorHeaderWithLocation ps
+  putStrLn $ "\n----------------------------------------\n"
+  printProofState ps
+  putStrLn $ "\nThe hypothesis <" ++ pprHyp ps h ++ "> does not exist"
+  putStrLn $ "When aplying the tactic <" ++ name ++ "> to the current goal"
+
+printInvalidTactic :: ProofState -> String -> IO ()
+printInvalidTactic ps name = do
+  printErrorHeaderWithLocation ps
+  putStrLn $ "Cannot apply tactic <" ++ name ++ "> to the current goal"
+  putStrLn $ "----------------------------------------\n"
+  printProofState ps
 
 printNoMoreSubgoals :: ProofState -> String -> IO ()
 printNoMoreSubgoals ps name = do
-  case ps_ann_last ps of
-    Just (MkSrcInfo _ (Just (f,r,c))) ->
-      putStrLn $ "Error at: " ++ f ++ ":" ++ show (r,c)
-    _ -> return ()
+  printErrorHeaderWithLocation ps
   putStrLn $ "No subgoals left in this branch to apply tactic <" ++ name ++ ">"
+  putStrLn $ "----------------------------------------\n"
+  printProofState ps
+
+printIncompleteProof :: ProofState -> IO ()
+printIncompleteProof ps = do
+  printCurrentLocation ps
+  putStrLn $ "\n----------------------------------------\n"
+  printProofState ps
 
 -- Pretty printing hypotheses
 pprHyp :: ProofState -> Hyp -> String
@@ -81,30 +118,59 @@ pprVar ps i
 
 pprProp :: ProofState -> Prop -> String
 pprProp ps = \case
-  Bot -> "⊥"
-  Var v -> pprVar ps v
-  Neg p -> "¬(" ++ pprProp ps p ++ ")"
-  And x y -> "(" ++ pprProp ps x ++ " /\\ " ++ pprProp ps y ++ ")"
-  Or  x y -> "(" ++ pprProp ps x ++ " \\/ " ++ pprProp ps y ++ ")"
-  Imp x y -> "(" ++ pprProp ps x ++ " ==> " ++ pprProp ps y ++ ")"
-  Eq  x y -> "(" ++ pprProp ps x ++ " <=> " ++ pprProp ps y ++ ")"
+  Bot ->
+    "⊥"
+  Var v ->
+    pprVar ps v
+  Neg x ->
+    "~" ++ parensIf (isBinary x) (pprProp ps x)
+  And x y ->
+    parensIf (isOr x  || isImp x || isEq x) (pprProp ps x)
+    ++ " /\\ " ++
+    parensIf (isOr y  || isImp y || isEq y) (pprProp ps y)
+  Or  x y ->
+    parensIf (isImp x || isEq  x) (pprProp ps x)
+    ++ " \\/ " ++
+    parensIf (isImp y || isEq  y) (pprProp ps y)
+  Imp x y ->
+    parensIf (isEq x) (pprProp ps x)
+    ++ " ==> " ++
+    parensIf (isEq y) (pprProp ps y)
+  Eq  x y ->
+    pprProp ps x
+    ++ " === " ++
+    pprProp ps y
+
+parensIf :: Bool -> String -> String
+parensIf True str = "(" ++ str ++ ")"
+parensIf _    str = str
 
 ----------------------------------------
 -- | Proof state
 
-type Goal = Prop
 
 newtype Hyp = MkHyp { unHyp :: Int }
   deriving (Show, Eq, Ord)
 
+type Goal = Prop
+
+type Context = Map Hyp Prop
+type Axioms  = Map Hyp Prop
+
+type VarInfo = Map Var SrcInfo
+type HypInfo = Map Hyp SrcInfo
+
 data ProofState = ProofState
-  { ps_variables :: Set Var
-  , ps_hyps :: Map Hyp Prop
-  , ps_goal :: Goal
-  , ps_subgoals :: [Goal]
-  , ps_ann_vars :: Map Var SrcInfo
-  , ps_ann_hyps :: Map Hyp SrcInfo
+  -- | Proof state
+  { ps_vars     :: Set Var
+  , ps_axioms   :: Axioms
+  , ps_goal     :: Goal
+  , ps_subgoals :: [(Goal, Context)]
+  -- | Source annotations
+  , ps_ann_vars :: VarInfo
+  , ps_ann_hyps :: HypInfo
   , ps_ann_last :: Maybe SrcInfo
+  -- | Serial number generators
   , ps_var_uniq :: Int
   , ps_hyp_uniq :: Int
   } deriving Show
@@ -113,31 +179,60 @@ emptyProofState :: ProofState
 emptyProofState =
   ProofState Set.empty Map.empty (Neg Bot) [] Map.empty Map.empty Nothing 0 0
 
-
 ----------------------------------------
 -- | The proof type
 
-type Proof = StateT ProofState (ExceptT ProofError IO)
+type Proof = StateT ProofState (ExceptT ProofError Identity)
 
 -- Runners
-runProof :: Proof a -> IO (Either ProofError a)
-runProof = runExceptT . flip evalStateT emptyProofState
+runProof :: Proof a -> Either ProofError a
+runProof = runIdentity . runExceptT . flip evalStateT emptyProofState
 
 runProofInteractive :: Proof a -> IO ()
 runProofInteractive p =
-  runProof p >>= \case
-    Right _ -> putStrLn "No more subgoals"
-    Left (InvalidTactic ps name)  -> printInvalidTactic ps name
-    Left (IncompleteProof ps)     -> printIncompleteProof ps
-    Left (NoMoreSubgoals ps name) -> printNoMoreSubgoals ps name
+  case runProof p of
+    Right _                               -> putStrLn "No more subgoals."
+    Left (InvalidTactic ps name)          -> printInvalidTactic ps name
+    Left (IncompleteProof ps)             -> printIncompleteProof ps
+    Left (NoMoreSubgoals ps name)         -> printNoMoreSubgoals ps name
+    Left (InexistentHypothesis ps name h) -> printInexistentHypothesis ps name h
 
 
 ----------------------------------------
 -- Basic proof constructions
 
+newtype Tautology = Tautology { getTautology :: Prop } deriving Show
+
+
+-- Create a proof for a given goal
+proof :: Prop -> Proof Tautology -> Proof Tautology
+proof goal body = do
+  setGoal goal
+  setSubgoals [(goal, Map.empty)]
+  body
+
+-- Complete a proof gracefully
+qed :: Proof Tautology
+qed = do
+  ps <- get
+  if null (ps_subgoals ps)
+    then return (Tautology (ps_goal ps))
+    else incompleteProof
+
+-- Create axioms
+axiom :: Prop -> Proof Hyp
+axiom prop = state $ \ps ->
+  let uniq = ps_hyp_uniq ps; axm = MkHyp uniq
+  in (axm, ps { ps_hyp_uniq = uniq + 1, ps_axioms = Map.insert axm prop (ps_axioms ps)})
+
 -- Bring new variables to life
+freshVar :: Proof Prop
+freshVar = state $ \ps ->
+  let uniq = ps_var_uniq ps; v = MkVar uniq
+  in (Var v, ps { ps_var_uniq = uniq + 1, ps_vars = Set.insert v (ps_vars ps)})
+
 var :: Proof Prop
-var = newVar
+var = freshVar
 
 class Variables a where
   vars :: Proof a
@@ -148,29 +243,38 @@ instance Variables (Prop, Prop) where
 instance Variables (Prop, Prop, Prop) where
   vars = (,,) <$> var <*> var <*> var
 
--- Creaate a proof target
-proof :: Prop -> Proof Prop -> Proof Prop
-proof goal body = do
-  setGoal goal
-  setSubgoals [goal]
-  body
 
--- Complete a proof gracefully
-qed :: Proof Prop
-qed = do
-  ps <- get
-  if null (ps_subgoals ps)
-    then return (ps_goal ps)
-    else incompleteProof
+-- Operations over hypotheses
+hyp :: Int -> Hyp
+hyp = MkHyp
+
+freshHyp :: Proof Hyp
+freshHyp = state $ \ps ->
+  let uniq = ps_hyp_uniq ps; h = MkHyp uniq
+  in (h, ps { ps_hyp_uniq = uniq + 1 })
+
+(+=) :: Ord k => Map k v -> (k, v) -> Map k v
+(+=) m (k,v) = Map.insert k v m
+
+(!) :: Ord k => Map k v -> k -> Maybe v
+(!) = flip Map.lookup
+
+elems :: Map k a -> [a]
+elems = Map.elems
 
 
--- Operations over variables
-newVar :: Proof Prop
-newVar = state $ \ps ->
-  (Var (MkVar (ps_var_uniq ps)),
-   ps { ps_var_uniq = ps_var_uniq ps + 1
-      , ps_variables = Set.insert (MkVar (ps_var_uniq ps)) (ps_variables ps)
-      })
+-- Operations over goals and subgoals
+setGoal :: Goal -> Proof ()
+setGoal goal = modify $ \ps ->
+  ps { ps_goal = goal }
+
+setSubgoals :: [(Goal, Context)] -> Proof ()
+setSubgoals subgoals = modify $ \ps ->
+  ps { ps_subgoals = subgoals }
+
+getSubgoals :: Proof [(Goal, Context)]
+getSubgoals = gets ps_subgoals
+
 
 ----------------------------------------
 -- Proof source annotations
@@ -178,6 +282,7 @@ newVar = state $ \ps ->
 instance Annotated SrcInfo Proof Prop where
   annotateM info pp = do
     p <- pp
+    setLastCommandSrcInfo info
     case p of
       Var v -> insertVarSrcInfo v info >> return p
       _     -> return p
@@ -186,50 +291,14 @@ instance Annotated SrcInfo Proof Hyp where
   annotateM info ph = do
     h <- ph
     insertHypSrcInfo h info
+    setLastCommandSrcInfo info
     return h
 
 instance Annotated SrcInfo Proof () where
   annotateM info pu = do
     () <- pu
-    setLastTacticSrcInfo info
+    setLastCommandSrcInfo info
     return ()
-
-----------------------------------------
--- Proof state operations
-
--- Operations over hypotheses
-hyp :: Int -> Hyp
-hyp = MkHyp
-
-newHyp :: Prop -> Proof Hyp
-newHyp prop = state $ \ps ->
-  (MkHyp (ps_var_uniq ps),
-   ps { ps_hyp_uniq = ps_hyp_uniq ps + 1
-      , ps_hyps = Map.insert (MkHyp (ps_hyp_uniq ps)) prop (ps_hyps ps)
-      })
-
-lookupHyp :: Hyp -> Proof (Maybe Prop)
-lookupHyp i = Map.lookup i <$> gets ps_hyps
-
-getHyps :: Proof (Map Hyp Prop)
-getHyps = gets ps_hyps
-
-setHyps :: Map Hyp Prop -> Proof ()
-setHyps hyps = modify $ \ps ->
-  ps { ps_hyps = hyps }
-
-
--- Operations over goals and subgoals
-setGoal :: Goal -> Proof ()
-setGoal goal = modify $ \ps ->
-  ps { ps_goal = goal }
-
-setSubgoals :: [Goal] -> Proof ()
-setSubgoals subgoals = modify $ \ps ->
-  ps { ps_subgoals = subgoals }
-
-getSubgoals :: Proof [Goal]
-getSubgoals = gets ps_subgoals
 
 -- Operations over source annotations
 insertVarSrcInfo :: Var -> SrcInfo -> Proof ()
@@ -240,6 +309,6 @@ insertHypSrcInfo :: Hyp -> SrcInfo -> Proof ()
 insertHypSrcInfo h info = modify $ \ps ->
   ps { ps_ann_hyps = Map.insert h info (ps_ann_hyps ps) }
 
-setLastTacticSrcInfo :: SrcInfo -> Proof ()
-setLastTacticSrcInfo info = modify $ \ps ->
+setLastCommandSrcInfo :: SrcInfo -> Proof ()
+setLastCommandSrcInfo info = modify $ \ps ->
   ps { ps_ann_last = Just info }

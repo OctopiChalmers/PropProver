@@ -2,11 +2,15 @@
 
 FILE=test/Main.hs
 PRAGMA=pragma
-echo "Running interactive proof mode over $FILE"
+
+clear
+stack runhaskell $FILE | grep -Ev '^(\[Peekaboo\])'
 
 inotifywait -q -m -e close_write $FILE |
 while read -r filename event; do
-  
+
+  OUTPUT=`stack runhaskell $FILE | grep -Ev '^(\[Peekaboo\])'`
   clear
-  cat $PRAGMA $FILE | stack runhaskell | grep -Ev '^(\[Peekaboo\])'
+  echo "$OUTPUT"
+
 done
