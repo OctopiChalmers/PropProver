@@ -29,6 +29,9 @@ admit = getSubgoals >>= \case
 idtac :: Proof ()
 idtac = return ()
 
+breakpoint :: Proof ()
+breakpoint = incompleteProof
+
 ----------------------------------------
 -- Tactics for manipulating the goal
 
@@ -87,14 +90,15 @@ right = getSubgoals >>= \case
 ----------------------------------------
 -- Tactics for manipulating the hypotheses
 
-pose :: Tautology -> Proof Hyp
-pose (Tautology prop) = getSubgoals >>= \case
+pose :: Proof Tautology -> Proof Hyp
+pose proof_tauto = getSubgoals >>= \case
   (goal, ctx) : rest -> do
+    Tautology prop <- proof_tauto
     h <- freshHyp
     setSubgoals ((goal, ctx += (h, prop)) : rest)
     return h
   goal ->
-    badSubgoal "unfold" goal
+    badSubgoal "pose" goal
 
 destruct :: Hyp -> Proof (Hyp, Hyp)
 destruct h = getSubgoals >>= \case

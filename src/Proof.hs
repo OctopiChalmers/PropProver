@@ -4,6 +4,8 @@
 
 module Proof where
 
+import Data.List
+
 import Control.Monad.Except
 import Control.Monad.State
 import Control.Monad.Identity
@@ -18,6 +20,10 @@ import Data.Annotated.Monadic
 import Peekaboo.Monadic
 
 import Prop
+
+(|$|) :: (a -> b) -> a -> b
+(|$|) = ($)
+infix 3 |$|
 
 ----------------------------------------
 -- | Proof errors
@@ -50,14 +56,14 @@ noMoreSubgoals name = get >>= \ps ->
 -- Pretty printing errors
 printErrorHeaderWithLocation :: ProofState -> IO ()
 printErrorHeaderWithLocation ps =
-  case ps_ann_last ps of
+  case ps_ann_curr ps of
     Just (MkSrcInfo _ (Just (f,r,c))) ->
       putStrLn $ "Error at " ++ f ++ ":" ++ show (r, c)
     _ -> return ()
 
 printCurrentLocation :: ProofState -> IO ()
 printCurrentLocation ps =
-  case ps_ann_last ps of
+  case ps_ann_curr ps of
     Just (MkSrcInfo _ (Just (f,r,c))) -> do
       putStrLn $ "Current position: " ++ f ++ ":" ++ show (r, c)
     _ -> return ()
@@ -66,13 +72,13 @@ printProofState :: ProofState -> IO ()
 printProofState ps = do
   let subgoals = length (ps_subgoals ps)
   let subgoalsword = if subgoals == 1 then "subgoal" else "subgoals"
-  putStrLn $ show subgoals ++ " " ++ subgoalsword ++ "\n"
-  forM_ (Set.elems (ps_vars ps)) $ \i -> do
-    putStrLn $ pprVar ps i ++ " : Prop"
+  putStrLn $ show subgoals ++ " " ++ subgoalsword
+  putStrLn $ intercalate ", " (pprVar ps <$> Set.elems (ps_vars ps)) ++ " : Prop"
   forM_ (Map.assocs (ps_axioms ps)) $ \(axm, prop) -> do
     putStrLn $ pprHyp ps axm ++ " : " ++ pprProp ps prop
-  forM_ (Map.assocs (snd (head (ps_subgoals ps)))) $ \(h, prop) -> do
-    putStrLn $ pprHyp ps h ++ " : " ++ pprProp ps prop
+  when (not (null (ps_subgoals ps))) $ do
+    forM_ (Map.assocs (snd (head (ps_subgoals ps)))) $ \(h, prop) -> do
+      putStrLn $ pprHyp ps h ++ " : " ++ pprProp ps prop
   putStrLn $ "========================================"
   putStrLn $ pprProp ps (fst (head (ps_subgoals ps)))
 
@@ -169,7 +175,7 @@ data ProofState = ProofState
   -- | Source annotations
   , ps_ann_vars :: VarInfo
   , ps_ann_hyps :: HypInfo
-  , ps_ann_last :: Maybe SrcInfo
+  , ps_ann_curr :: Maybe SrcInfo
   -- | Serial number generators
   , ps_var_uniq :: Int
   , ps_hyp_uniq :: Int
@@ -188,8 +194,9 @@ type Proof = StateT ProofState (ExceptT ProofError Identity)
 runProof :: Proof a -> Either ProofError a
 runProof = runIdentity . runExceptT . flip evalStateT emptyProofState
 
-runProofInteractive :: Proof a -> IO ()
-runProofInteractive p =
+prover :: Proof a -> IO ()
+prover p = do
+  putStrLn "\n*** PropProver ***"
   case runProof p of
     Right _                               -> putStrLn "No more subgoals."
     Left (InvalidTactic ps name)          -> printInvalidTactic ps name
@@ -207,9 +214,14 @@ newtype Tautology = Tautology { getTautology :: Prop } deriving Show
 -- Create a proof for a given goal
 proof :: Prop -> Proof Tautology -> Proof Tautology
 proof goal body = do
+  ps <- get
+
   setGoal goal
   setSubgoals [(goal, Map.empty)]
-  body
+  tauto <- body
+
+  put ps
+  return tauto
 
 -- Complete a proof gracefully
 qed :: Proof Tautology
@@ -223,7 +235,8 @@ qed = do
 axiom :: Prop -> Proof Hyp
 axiom prop = state $ \ps ->
   let uniq = ps_hyp_uniq ps; axm = MkHyp uniq
-  in (axm, ps { ps_hyp_uniq = uniq + 1, ps_axioms = Map.insert axm prop (ps_axioms ps)})
+  in (axm, ps { ps_hyp_uniq = uniq + 1
+              , ps_axioms = Map.insert axm prop (ps_axioms ps)})
 
 -- Bring new variables to life
 freshVar :: Proof Prop
@@ -264,6 +277,9 @@ elems = Map.elems
 
 
 -- Operations over goals and subgoals
+getGoal :: Proof Goal
+getGoal = gets ps_goal
+
 setGoal :: Goal -> Proof ()
 setGoal goal = modify $ \ps ->
   ps { ps_goal = goal }
@@ -281,23 +297,23 @@ getSubgoals = gets ps_subgoals
 
 instance Annotated SrcInfo Proof Prop where
   annotateM info pp = do
+    setCurrCommandSrcInfo info
     p <- pp
-    setLastCommandSrcInfo info
     case p of
       Var v -> insertVarSrcInfo v info >> return p
       _     -> return p
 
 instance Annotated SrcInfo Proof Hyp where
   annotateM info ph = do
+    setCurrCommandSrcInfo info
     h <- ph
     insertHypSrcInfo h info
-    setLastCommandSrcInfo info
     return h
 
 instance Annotated SrcInfo Proof () where
   annotateM info pu = do
+    setCurrCommandSrcInfo info
     () <- pu
-    setLastCommandSrcInfo info
     return ()
 
 -- Operations over source annotations
@@ -309,6 +325,6 @@ insertHypSrcInfo :: Hyp -> SrcInfo -> Proof ()
 insertHypSrcInfo h info = modify $ \ps ->
   ps { ps_ann_hyps = Map.insert h info (ps_ann_hyps ps) }
 
-setLastCommandSrcInfo :: SrcInfo -> Proof ()
-setLastCommandSrcInfo info = modify $ \ps ->
-  ps { ps_ann_last = Just info }
+setCurrCommandSrcInfo :: SrcInfo -> Proof ()
+setCurrCommandSrcInfo info = modify $ \ps ->
+  ps { ps_ann_curr = Just info }

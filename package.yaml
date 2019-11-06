@@ -28,15 +28,18 @@ dependencies:
 library:
   source-dirs: src
 
-tests:
-  Test:
-    main:                Main.hs
-    source-dirs:         test
+executables:
+  PropProverTests:
+    main: Main.hs
+    source-dirs: test
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    - -fplugin=Peekaboo.Monadic
+    - -O0
+    # - -threaded
+    # - -rtsopts
+    # - -with-rtsopts=-N
+    # Plugin specifics
     - -fplugin-opt=Peekaboo.Monadic:$
+    - -fplugin=Peekaboo.Monadic
     dependencies:
     - PropProver
+    - Peekaboo
