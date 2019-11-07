@@ -38,6 +38,9 @@ executables:
     # - -rtsopts
     # - -with-rtsopts=-N
     # Plugin specifics
+    - -fno-warn-unused-do-bind
+    - -fno-warn-unused-matches
+    - -fno-warn-missing-signatures
     - -fplugin-opt=Peekaboo.Monadic:$
     - -fplugin=Peekaboo.Monadic
     dependencies:

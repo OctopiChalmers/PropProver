@@ -25,12 +25,8 @@ admit = getSubgoals >>= \case
   goal ->
     badSubgoal "admit" goal
 
-
 idtac :: Proof ()
 idtac = return ()
-
-breakpoint :: Proof ()
-breakpoint = incompleteProof
 
 ----------------------------------------
 -- Tactics for manipulating the goal

@@ -30,6 +30,7 @@ infix 3 |$|
 
 data ProofError =
     IncompleteProof       ProofState
+  | ReachedBreakpoint     ProofState
   | InexistentHypothesis  ProofState String Hyp
   | InvalidTactic         ProofState String
   | NoMoreSubgoals        ProofState String
@@ -52,6 +53,9 @@ noMoreSubgoals :: String -> Proof a
 noMoreSubgoals name = get >>= \ps ->
   throwError (NoMoreSubgoals ps name)
 
+breakpoint :: Proof ()
+breakpoint = get >>= \ps ->
+  throwError (ReachedBreakpoint ps)
 
 -- Pretty printing errors
 printErrorHeaderWithLocation :: ProofState -> IO ()
@@ -59,6 +63,13 @@ printErrorHeaderWithLocation ps =
   case ps_ann_curr ps of
     Just (MkSrcInfo _ (Just (f,r,c))) ->
       putStrLn $ "Error at " ++ f ++ ":" ++ show (r, c)
+    _ -> return ()
+
+printBreakpointLocation :: ProofState -> IO ()
+printBreakpointLocation ps =
+  case ps_ann_curr ps of
+    Just (MkSrcInfo _ (Just (f,r,c))) -> do
+      putStrLn $ "Reached breakpoint at: " ++ f ++ ":" ++ show (r, c)
     _ -> return ()
 
 printCurrentLocation :: ProofState -> IO ()
@@ -102,6 +113,12 @@ printNoMoreSubgoals ps name = do
   printErrorHeaderWithLocation ps
   putStrLn $ "No subgoals left in this branch to apply tactic <" ++ name ++ ">"
   putStrLn $ "----------------------------------------\n"
+  printProofState ps
+
+printBreakpoint :: ProofState -> IO ()
+printBreakpoint ps = do
+  printBreakpointLocation ps
+  putStrLn $ "\n----------------------------------------\n"
   printProofState ps
 
 printIncompleteProof :: ProofState -> IO ()
@@ -199,8 +216,9 @@ prover p = do
   putStrLn "\n*** PropProver ***"
   case runProof p of
     Right _                               -> putStrLn "No more subgoals."
-    Left (InvalidTactic ps name)          -> printInvalidTactic ps name
     Left (IncompleteProof ps)             -> printIncompleteProof ps
+    Left (ReachedBreakpoint ps)           -> printBreakpoint ps
+    Left (InvalidTactic ps name)          -> printInvalidTactic ps name
     Left (NoMoreSubgoals ps name)         -> printNoMoreSubgoals ps name
     Left (InexistentHypothesis ps name h) -> printInexistentHypothesis ps name h
 
@@ -248,13 +266,13 @@ var :: Proof Prop
 var = freshVar
 
 class Variables a where
-  vars :: Proof a
+  variables :: Proof a
 
 instance Variables (Prop, Prop) where
-  vars = (,) <$> var <*> var
+  variables = (,) <$> var <*> var
 
 instance Variables (Prop, Prop, Prop) where
-  vars = (,,) <$> var <*> var <*> var
+  variables = (,,) <$> var <*> var <*> var
 
 
 -- Operations over hypotheses
