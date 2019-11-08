@@ -6,14 +6,14 @@ PRAGMA=pragma
 clear
 echo "Starting prover"
 
-OUTPUT=`stack run PropProverTests 2> /dev/null | awk '/*** PropProver ***/{f=1}f'`
+OUTPUT=`stack run PropProver 2> /dev/null | awk '/*** PropProver ***/{f=1}f'`
 clear
 echo "$OUTPUT"
 
 inotifywait -q -m -e close_write $FILE |
 while read -r filename event; do
   echo "Recompiling..."
-  OUTPUT=`stack run PropProverTests 2> /dev/null | awk '/*** PropProver ***/{f=1}f'`
+  OUTPUT=`stack run PropProver 2> /dev/null | awk '/*** PropProver ***/{f=1}f'`
   clear
   echo "$OUTPUT"
 done

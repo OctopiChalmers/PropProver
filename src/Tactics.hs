@@ -1,16 +1,14 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Tactics where
 
-import Prop
-import Proof
+import Types
+import MonadProof
 
-badSubgoal :: String -> [(Goal, Context)] -> Proof a
+badSubgoal :: MonadProof m => String -> [(Goal, Context)] -> m a
 badSubgoal name = \case
   _:_ -> invalidTactic  name
   []  -> noMoreSubgoals name
 
-badHyp :: String -> Hyp -> Maybe Prop -> Proof a
+badHyp :: MonadProof m => String -> Hyp -> Maybe Prop -> m a
 badHyp name h = \case
   Just _  -> invalidTactic name
   Nothing -> inexistentHypothesis name h
@@ -18,20 +16,20 @@ badHyp name h = \case
 ----------------------------------------
 -- Cheaty and trivial tactics
 
-admit :: Proof ()
+admit :: MonadProof m => m ()
 admit = getSubgoals >>= \case
-  _ : rest -> do
+  _ : rest ->
     setSubgoals rest
   goal ->
     badSubgoal "admit" goal
 
-idtac :: Proof ()
+idtac :: MonadProof m => m ()
 idtac = return ()
 
 ----------------------------------------
 -- Tactics for manipulating the goal
 
-intro :: Proof Hyp
+intro :: MonadProof m => m Hyp
 intro = getSubgoals >>= \case
   (Imp x y, ctx) : rest -> do
     h <- freshHyp
@@ -44,15 +42,15 @@ intro = getSubgoals >>= \case
   goal ->
     badSubgoal "intro" goal
 
-exact :: Hyp -> Proof ()
+exact :: (MonadProof m, IsHyp h) => h -> m ()
 exact h = getSubgoals >>= \case
   (goal, ctx) : rest
-    | ctx ! h == Just goal ->
+    | ctx ! hyp h == Just goal ->
       setSubgoals rest
   goal ->
     badSubgoal "exact" goal
 
-assumption :: Proof ()
+assumption :: MonadProof m => m ()
 assumption = getSubgoals >>= \case
   (goal, ctx) : rest
     | goal `elem` ctx ->
@@ -60,7 +58,7 @@ assumption = getSubgoals >>= \case
   goal ->
     badSubgoal "assumption" goal
 
-split :: Proof ()
+split :: MonadProof m => m ()
 split = getSubgoals >>= \case
   (And x y, ctx) : rest ->
     setSubgoals ((x, ctx) : (y, ctx) : rest)
@@ -69,14 +67,14 @@ split = getSubgoals >>= \case
   goal ->
     badSubgoal "split" goal
 
-left :: Proof ()
+left :: MonadProof m => m ()
 left = getSubgoals >>= \case
   (Or x _, ctx) : rest ->
     setSubgoals ((x, ctx) : rest)
   goal ->
     badSubgoal "left" goal
 
-right :: Proof ()
+right :: MonadProof m => m ()
 right = getSubgoals >>= \case
   (Or _ y, ctx) : rest ->
     setSubgoals ((y, ctx) : rest)
@@ -86,7 +84,7 @@ right = getSubgoals >>= \case
 ----------------------------------------
 -- Tactics for manipulating the hypotheses
 
-pose :: Proof Tautology -> Proof Hyp
+pose :: MonadProof m => m Tautology -> m Hyp
 pose proof_tauto = getSubgoals >>= \case
   (goal, ctx) : rest -> do
     Tautology prop <- proof_tauto
@@ -96,10 +94,10 @@ pose proof_tauto = getSubgoals >>= \case
   goal ->
     badSubgoal "pose" goal
 
-destruct :: Hyp -> Proof (Hyp, Hyp)
+destruct :: (MonadProof m, IsHyp h) => h -> m (Hyp, Hyp)
 destruct h = getSubgoals >>= \case
   (goal, ctx) : rest ->
-    case ctx ! h of
+    case ctx ! hyp h of
       Just (And x y) -> do
         hx <- freshHyp
         hy <- freshHyp
@@ -110,12 +108,11 @@ destruct h = getSubgoals >>= \case
         hy <- freshHyp
         setSubgoals ((goal, ctx += (hx, Imp x y) += (hy, Imp y x)) : rest)
         return (hx, hy)
-      mbp -> badHyp "destruct" h mbp
+      mbp -> badHyp "destruct" (hyp h) mbp
   goal ->
     badSubgoal "destruct" goal
 
-
-contradiction :: Proof ()
+contradiction :: MonadProof m => m ()
 contradiction = getSubgoals >>= \case
   (_, ctx) : rest -> do
     let pairs = [ (x, y) | Neg x <- elems ctx, y <- elems ctx, x == y ]
@@ -125,38 +122,38 @@ contradiction = getSubgoals >>= \case
   goal ->
     badSubgoal "destruct" goal
 
-elim :: Hyp -> Proof (Hyp, Hyp)
+elim :: (MonadProof m, IsHyp h) => h -> m (Hyp, Hyp)
 elim h = getSubgoals >>= \case
   (goal, ctx) : rest -> do
-    case ctx ! h of
+    case ctx ! hyp h of
       Just (Or x y) -> do
         hx <- freshHyp
         hy <- freshHyp
         setSubgoals ((goal, ctx += (hx, x)) : (goal, ctx += (hy, y)) : rest)
         return (hx, hy)
-      mbp -> badHyp "elim" h mbp
+      mbp -> badHyp "elim" (hyp h) mbp
   goal ->
     badSubgoal "elim" goal
 
 
-apply :: Hyp -> Hyp -> Proof Hyp
+apply :: (MonadProof m, IsHyp ha, IsHyp hf) => ha -> hf -> m Hyp
 apply harg hfun = getSubgoals >>= \case
-  (goal, ctx) : rest -> do
-    case (ctx ! harg, ctx ! hfun) of
+  (goal, ctx) : rest ->
+    case (ctx ! hyp harg, ctx ! hyp hfun) of
       (Just h, Just (Imp x y))
         | h == x -> do
             hy <- freshHyp
             setSubgoals ((goal, ctx += (hy, y)) : rest)
             return hy
-      mbp -> badHyp "apply" harg (fst mbp)
+      mbp -> badHyp "apply" (hyp harg) (fst mbp)
   goal ->
     badSubgoal "elim" goal
 
-unfold :: Proof ()
+unfold :: MonadProof m => m ()
 unfold = getSubgoals >>= \case
-  (Neg x, ctx) : rest -> do
+  (Neg x, ctx) : rest ->
     setSubgoals ((Imp x Bot, ctx) : rest)
-  (Eq x y, ctx) : rest -> do
+  (Eq x y, ctx) : rest ->
     setSubgoals ((And (Imp x y) (Imp y x), ctx) : rest)
   goal ->
     badSubgoal "unfold" goal

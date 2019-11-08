@@ -6,18 +6,18 @@
 packages:
 - completed:
     cabal-file:
-      size: 1810
-      sha256: dd43e44147a627c417ab6281528ac6075dadc472cb7470beb6a63419f3a00936
-    name: Peekaboo
+      size: 1825
+      sha256: 28083192a3a8b4c2d314f8681d4a7f1e52e3dde6b52ac2bb79a1fa22891e5a70
+    name: MonadAnn
     version: 0.1.0.0
-    git: https://github.com/agustinmista/Peekaboo.git
+    git: https://github.com/OctopiChalmers/MonadAnn.git
     pantry-tree:
-      size: 1845
-      sha256: bf2f3322b3cd375a22c77d9e899d0949d0f0b13701245b58d9f711bea1ac5fbf
-    commit: b85f8615ae64e5f0a1e3b003bd36035b6ec295d3
+      size: 1839
+      sha256: 016383d28279fe21eaec9a76dc1582d97cbc9792cd67f50f376aaa587ac409cc
+    commit: 6cce2a42a50aae62b86e08228eafef7320b15880
   original:
-    git: https://github.com/agustinmista/Peekaboo.git
-    commit: b85f8615ae64e5f0a1e3b003bd36035b6ec295d3
+    git: https://github.com/OctopiChalmers/MonadAnn.git
+    commit: 6cce2a42a50aae62b86e08228eafef7320b15880
 snapshots:
 - completed:
     size: 523700

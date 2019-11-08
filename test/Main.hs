@@ -1,7 +1,8 @@
+{-# OPTIONS_GHC -fplugin MonadAnn.Monadic #-}
 import PropProver
 
 {- launch an "interactive" proof assistant -}
-main = prover $ do
+main = prover do
 
   {- create some propositional variables -}
   (p, q, r) <- variables
@@ -17,14 +18,14 @@ main = prover $ do
 
 {-  p ==> p  -}
 trivial p =
-  proof (p ==> p) $ do
+  proof (p ==> p) do
     hp <- intro
     exact hp
     qed
 
 {-  p /\ (p ==> q) ==> q  -}
 modus_ponens p q =
-  proof (p /\ (p ==> q) ==> q) $ do
+  proof (p /\ (p ==> q) ==> q) do
 
     h_p_pq <- intro
     (h_p, h_pq) <- destruct h_p_pq
@@ -34,7 +35,7 @@ modus_ponens p q =
 
 {-  neg p \/ neg q ==> neg (p /\ q)  -}
 de_morgan p q =
-  proof (neg p \/ neg q ==> neg (p /\ q)) $ do
+  proof (neg p \/ neg q ==> neg (p /\ q)) do
 
     {- we can reuse proofs! -}
     mp_lemma <- pose (modus_ponens (neg q) (p /\ q))
@@ -49,7 +50,7 @@ de_morgan p q =
 
 {-  p /\ (q \/ r) ==> (p /\ q) \/ (p /\ r)  -}
 dist_and_or p q r =
-  proof (p /\ (q \/ r) ==> p /\ q \/ p /\ r) $ do
+  proof (p /\ (q \/ r) ==> p /\ q \/ p /\ r) do
     h1 <- intro
     (hp, hpq) <- destruct h1
     elim hpq

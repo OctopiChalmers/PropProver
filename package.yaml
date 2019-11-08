@@ -23,26 +23,30 @@ dependencies:
 - base >= 4.7 && < 5
 - containers
 - mtl
-- Peekaboo
+- template-haskell
+- MonadAnn
+
+default-extensions:
+- FlexibleInstances
+- FlexibleContexts
+- ConstraintKinds
+- MultiParamTypeClasses
+- LambdaCase
+- BlockArguments
 
 library:
   source-dirs: src
 
 executables:
-  PropProverTests:
+  PropProver:
     main: Main.hs
     source-dirs: test
     ghc-options:
     - -O0
-    # - -threaded
-    # - -rtsopts
-    # - -with-rtsopts=-N
-    # Plugin specifics
     - -fno-warn-unused-do-bind
     - -fno-warn-unused-matches
     - -fno-warn-missing-signatures
-    - -fplugin-opt=Peekaboo.Monadic:$
-    - -fplugin=Peekaboo.Monadic
+    - -fplugin-opt MonadAnn.Monadic:full
     dependencies:
     - PropProver
-    - Peekaboo
+    - MonadAnn

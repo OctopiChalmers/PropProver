@@ -1,24 +1,43 @@
-{-# LANGUAGE LambdaCase #-}
 module Prop where
 
-----------------------------------------
--- | Identifiers
-
-newtype Var = MkVar { unVar :: Int }
-  deriving (Show, Eq, Ord)
+import Types
 
 ----------------------------------------
--- | Propositional values
+-- Builders
 
-data Prop =
-   Bot
- | Var Var
- | Neg Prop
- | And Prop Prop
- | Or  Prop Prop
- | Imp Prop Prop
- | Eq  Prop Prop
-  deriving (Show, Eq)
+false, (⊥) :: Prop
+false = Bot
+(⊥) = Bot
+
+neg :: Prop -> Prop
+neg = Neg
+
+(/\), (∧) :: Prop -> Prop -> Prop
+(/\) = And
+(∧) = And
+infixl 7 /\
+infixl 7 ∧
+
+(\/), (∨) :: Prop -> Prop -> Prop
+(\/) = Or
+(∨) = Or
+infixl 6 \/
+infixl 6 ∨
+
+(==>), (⇒) :: Prop -> Prop -> Prop
+(==>) = Imp
+(⇒) = Imp
+infixr 5 ==>
+infixr 5 ⇒
+
+(===), (≡) :: Prop -> Prop -> Prop
+(===) = Eq
+(≡) = Eq
+infix 4 ===
+infix 4 ≡
+
+----------------------------------------
+-- Predicates over Props
 
 isBinary :: Prop -> Bool
 isBinary Bot    = False
@@ -55,28 +74,3 @@ subterms = \case
   Or  x y -> [x, y]
   Imp x y -> [x, y]
   Eq  x y -> [x, y]
-
-----------------------------------------
--- Infix builders
-
-false :: Prop
-false = Bot
-
-neg :: Prop -> Prop
-neg = Neg
-
-(/\) :: Prop -> Prop -> Prop
-(/\) = And
-infixl 7 /\
-
-(\/) :: Prop -> Prop -> Prop
-(\/) = Or
-infixl 6 \/
-
-(==>) :: Prop -> Prop -> Prop
-(==>) = Imp
-infixr 5 ==>
-
-(===) :: Prop -> Prop -> Prop
-(===) = Eq
-infix 4 ===

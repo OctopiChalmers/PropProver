@@ -40,9 +40,8 @@ packages:
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
 extra-deps:
-- git: https://github.com/agustinmista/Peekaboo.git
-  commit: b85f8615ae64e5f0a1e3b003bd36035b6ec295d3
-
+- git: https://github.com/OctopiChalmers/MonadAnn.git
+  commit: 6cce2a42a50aae62b86e08228eafef7320b15880
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

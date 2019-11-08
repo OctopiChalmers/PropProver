@@ -1,11 +1,15 @@
 module PropProver
-  ( module Prop
+  ( module Types
+  , module Prop
   , module Proof
   , module Tactics
-  , module Peekaboo.Monadic
+  , module MonadProof
+  , module MonadAnn.Monadic
   ) where
 
+import Types
 import Prop
 import Proof
 import Tactics
-import Peekaboo.Monadic
+import MonadProof
+import MonadAnn.Monadic
