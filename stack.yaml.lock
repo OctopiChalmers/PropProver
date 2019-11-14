@@ -6,18 +6,18 @@
 packages:
 - completed:
     cabal-file:
-      size: 1825
-      sha256: 28083192a3a8b4c2d314f8681d4a7f1e52e3dde6b52ac2bb79a1fa22891e5a70
-    name: MonadAnn
-    version: 0.1.0.0
-    git: https://github.com/OctopiChalmers/MonadAnn.git
-    pantry-tree:
       size: 1839
-      sha256: 016383d28279fe21eaec9a76dc1582d97cbc9792cd67f50f376aaa587ac409cc
-    commit: 6cce2a42a50aae62b86e08228eafef7320b15880
+      sha256: a7b0c442ec90695d60bcfeaeba2960b0b33a3acbfd598c777dd2863dcb967622
+    name: BinderAnn
+    version: 0.1.0.0
+    git: https://github.com/OctopiChalmers/BinderAnn.git
+    pantry-tree:
+      size: 2425
+      sha256: bdda0cb7f20a7ac29a80862471b12f48334e79d5290b9cf790864058816f8e3c
+    commit: dc7e8ab30de5963d711ff5665d4231ee88296616
   original:
-    git: https://github.com/OctopiChalmers/MonadAnn.git
-    commit: 6cce2a42a50aae62b86e08228eafef7320b15880
+    git: https://github.com/OctopiChalmers/BinderAnn.git
+    commit: dc7e8ab30de5963d711ff5665d4231ee88296616
 snapshots:
 - completed:
     size: 523700

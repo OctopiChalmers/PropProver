@@ -6,7 +6,7 @@ import Control.Monad.Except
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
-import MonadAnn.Monadic
+import BinderAnn.Monadic
 
 import Types
 

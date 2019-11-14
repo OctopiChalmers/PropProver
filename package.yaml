@@ -24,7 +24,7 @@ dependencies:
 - containers
 - mtl
 - template-haskell
-- MonadAnn
+- BinderAnn
 
 default-extensions:
 - FlexibleInstances
@@ -46,7 +46,7 @@ executables:
     - -fno-warn-unused-do-bind
     - -fno-warn-unused-matches
     - -fno-warn-missing-signatures
-    - -fplugin-opt MonadAnn.Monadic:full
+    - -fplugin-opt BinderAnn.Monadic:full
     dependencies:
     - PropProver
-    - MonadAnn
+    - BinderAnn

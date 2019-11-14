@@ -1,5 +1,12 @@
-{-# OPTIONS_GHC -fplugin MonadAnn.Monadic #-}
+{-# OPTIONS_GHC -fplugin BinderAnn.Monadic #-}
 import PropProver
+
+
+twice :: Monad m => m a -> m (a, a)
+twice m = do
+  x <- m
+  return (x, x)
+
 
 {- launch an "interactive" proof assistant -}
 main = prover do
@@ -8,7 +15,7 @@ main = prover do
   (p, q, r) <- variables
 
   {- state some axioms -}
-  axiom_double_neg <- axiom (neg (neg p) === p)
+  axiom_classic <- axiom (p \/ neg p)
 
   {- prove some stuff -}
   trivial      p
@@ -26,9 +33,8 @@ trivial p =
 {-  p /\ (p ==> q) ==> q  -}
 modus_ponens p q =
   proof (p /\ (p ==> q) ==> q) do
-
-    h_p_pq <- intro
-    (h_p, h_pq) <- destruct h_p_pq
+    h_and <- intro
+    (h_p, h_pq) <- destruct h_and
     h_q <- apply h_p h_pq
     assumption
     qed

@@ -4,7 +4,7 @@ module PropProver
   , module Proof
   , module Tactics
   , module MonadProof
-  , module MonadAnn.Monadic
+  , module BinderAnn.Monadic
   ) where
 
 import Types
@@ -12,4 +12,4 @@ import Prop
 import Proof
 import Tactics
 import MonadProof
-import MonadAnn.Monadic
+import BinderAnn.Monadic

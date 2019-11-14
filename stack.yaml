@@ -40,8 +40,9 @@ packages:
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
 extra-deps:
-- git: https://github.com/OctopiChalmers/MonadAnn.git
-  commit: 6cce2a42a50aae62b86e08228eafef7320b15880
+- git: https://github.com/OctopiChalmers/BinderAnn.git
+  commit: dc7e8ab30de5963d711ff5665d4231ee88296616
+
 # Override default flag values for local packages and extra-deps
 # flags: {}
 
