@@ -102,3 +102,12 @@ data ProofError =
   | InvalidTactic         ProofState String
   | NoMoreSubgoals        ProofState String
   deriving Show
+
+----------------------------------------
+-- | Helpers
+
+info_name :: SrcInfo -> Maybe String
+info_name (Info mbname _) = mbname
+
+info_loc :: SrcInfo -> Maybe Loc
+info_loc (Info _ mbloc) = mbloc

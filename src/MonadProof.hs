@@ -1,5 +1,6 @@
 module MonadProof where
 
+import Data.Maybe
 import Control.Monad.State
 import Control.Monad.Except
 
@@ -143,6 +144,24 @@ instance MonadProof m => Annotated SrcInfo m () where
     setCurrCommandSrcInfo info
     () <- pu
     return ()
+
+instance MonadProof m => Annotated SrcInfo m Tautology where
+  annotateM pt info = do
+    setCurrCommandSrcInfo info
+    t <- pt
+    return t
+
+instance MonadProof m => Annotated SrcInfo m (Hyp, Hyp) where
+  annotateM ptup info = do
+    setCurrCommandSrcInfo info
+    (a, b) <- ptup
+    case info of
+      Info (Just nm) loc -> do
+        insertHypSrcInfo a (Info (Just ("fst " ++ nm)) loc)
+        insertHypSrcInfo b (Info (Just ("snd " ++ nm)) loc)
+      _ -> return ()
+    return (a, b)
+
 
 -- Operations over source annotations
 insertVarSrcInfo :: MonadProof m => Var -> SrcInfo -> m ()

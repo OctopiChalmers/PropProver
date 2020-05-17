@@ -44,13 +44,13 @@ printProofState ps = do
   when (not (null (ps_subgoals ps))) $ do
     forM_ (Map.assocs (snd (head (ps_subgoals ps)))) $ \(h, prop) -> do
       putStrLn $ pprHyp ps h ++ " : " ++ pprProp ps prop
-  putStrLn $ "========================================"
+  putStrLn $ "======================================"
   putStrLn $ pprProp ps (fst (head (ps_subgoals ps)))
 
 printInexistentHypothesis :: ProofState -> String -> Hyp -> IO ()
 printInexistentHypothesis ps name h = do
   printErrorHeaderWithLocation ps
-  putStrLn $ "\n----------------------------------------\n"
+  putStrLn $ "\n--------------------------------------\n"
   printProofState ps
   putStrLn $ "\nThe hypothesis <" ++ pprHyp ps h ++ "> does not exist"
   putStrLn $ "When aplying the tactic <" ++ name ++ "> to the current goal"
@@ -59,26 +59,26 @@ printInvalidTactic :: ProofState -> String -> IO ()
 printInvalidTactic ps name = do
   printErrorHeaderWithLocation ps
   putStrLn $ "Cannot apply tactic <" ++ name ++ "> to the current goal"
-  putStrLn $ "----------------------------------------\n"
+  putStrLn $ "--------------------------------------\n"
   printProofState ps
 
 printNoMoreSubgoals :: ProofState -> String -> IO ()
 printNoMoreSubgoals ps name = do
   printErrorHeaderWithLocation ps
   putStrLn $ "No subgoals left in this branch to apply tactic <" ++ name ++ ">"
-  putStrLn $ "----------------------------------------\n"
+  putStrLn $ "--------------------------------------\n"
   printProofState ps
 
 printBreakpoint :: ProofState -> IO ()
 printBreakpoint ps = do
   printBreakpointLocation ps
-  putStrLn $ "\n----------------------------------------\n"
+  putStrLn $ "\n--------------------------------------\n"
   printProofState ps
 
 printIncompleteProof :: ProofState -> IO ()
 printIncompleteProof ps = do
   printCurrentLocation ps
-  putStrLn $ "\n----------------------------------------\n"
+  putStrLn $ "\n--------------------------------------\n"
   printProofState ps
 
 -- Pretty printing hypotheses
